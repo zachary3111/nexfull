@@ -1,5 +1,5 @@
-from flask import Flask, jsonify, request
-from flask_cors import CORS, cross_origin
+from flask import Flask, jsonify
+from flask_cors import CORS
 import pandas as pd
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -8,16 +8,13 @@ from google.auth.transport.requests import Request
 import re
 
 app = Flask(__name__)
-
-# Wide CORS config to debug Render issues
-CORS(app, supports_credentials=True)
+CORS(app, origins=["https://nexfull-frontend-ery2.vercel.app"])  # ✅ Allow only your frontend domain
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 SPREADSHEET_ID = '1IPoBslhi_eYLm-myOlOxUQGHXCHpxxJ66WZAK-BlxPI'
 SHEET_NAME = "Real-Time Leads (Dup Checker)"
 
 @app.route("/generate-leads", methods=["GET"])
-@cross_origin(origin='https://nexfull-frontend-ery2.vercel.app', credentials=True)
 def generate_leads():
     try:
         creds = None
@@ -44,7 +41,6 @@ def generate_leads():
         return jsonify({"message": "Failed", "error": str(e)}), 500
 
 @app.route("/", methods=["GET"])
-@cross_origin(origin='https://nexfull-frontend-ery2.vercel.app', credentials=True)
 def root():
     return jsonify({"message": "Backend is running"}), 200
 
