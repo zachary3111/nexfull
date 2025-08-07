@@ -9,14 +9,15 @@ import os
 import csv
 from io import StringIO
 
-app = Flask(_name_)
+app = Flask(__name__)
 
 CORS(app, 
      origins=[
          "http://localhost:5173",
          "https://nexfull-frontend-ery2.vercel.app",
          "https://nexfull-frontend-ery2-1g22qmpfp-jehu-zachary-sedillos-projects.vercel.app",
-         "https://nexfull-frontend-h4iu.vercel.app"
+         "https://nexfull-frontend-h4iu.vercel.app",
+         "https://nexfull-frontend.vercel.app"
      ],
      methods=['GET', 'POST', 'OPTIONS'],
      allow_headers=['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
@@ -28,16 +29,14 @@ SPREADSHEET_ID = '1IPoBslhi_eYLm-myOlOxUQGHXCHpxxJ66WZAK-BlxPI'
 SHEET_NAME = "Real-Time Leads (Dup Checker)"
 
 def get_google_sheets_data():
-    """Helper function to get data from Google Sheets"""
     try:
         creds = None
         if os.path.exists('token.json'):
             creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-        
+
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
-                
                 with open('token.json', 'w') as token:
                     token.write(creds.to_json())
             else:
@@ -47,48 +46,39 @@ def get_google_sheets_data():
                 creds = flow.run_console()
                 with open('token.json', 'w') as token:
                     token.write(creds.to_json())
-        
+
         service = build('sheets', 'v4', credentials=creds)
-        
-        
         result = service.spreadsheets().values().get(
             spreadsheetId=SPREADSHEET_ID,
             range=SHEET_NAME
         ).execute()
-        
+
         values = result.get('values', [])
         return values
-    
+
     except Exception as e:
         print(f"Error getting Google Sheets data: {str(e)}")
         return None
 
 @app.route("/most_recent_leads_with_hyperlinks.csv", methods=["GET"])
 def get_csv():
-    """Serve CSV file from Google Sheets data"""
     try:
-        
         sheets_data = get_google_sheets_data()
-        
         if not sheets_data:
-            
-            sample_data = [
+            sheets_data = [
                 ["Name", "Email", "Company", "Phone", "Status"],
                 ["John Doe", "john@example.com", "Example Corp", "123-456-7890", "New"],
                 ["Jane Smith", "jane@company.com", "Company Inc", "987-654-3210", "Contacted"]
             ]
-            sheets_data = sample_data
-        
-        # Convert to CSV
+
         output = StringIO()
         writer = csv.writer(output)
-        
         for row in sheets_data:
             writer.writerow(row)
-        
+
         csv_content = output.getvalue()
         output.close()
-        
+
         return Response(
             csv_content,
             mimetype="text/csv",
@@ -97,26 +87,22 @@ def get_csv():
                 "Access-Control-Allow-Origin": "*"
             }
         )
-    
     except Exception as e:
         return jsonify({"error": f"Failed to generate CSV: {str(e)}"}), 500
 
 @app.route("/generate-leads", methods=["GET", "POST"])
 def generate_leads():
-    """Generate/refresh leads from Google Sheets"""
     try:
         sheets_data = get_google_sheets_data()
-        
         if sheets_data:
             return jsonify({
                 "message": "Leads generated successfully", 
-                "count": len(sheets_data) - 1 if len(sheets_data) > 1 else 0  # -1 for header row
+                "count": len(sheets_data) - 1 if len(sheets_data) > 1 else 0
             }), 200
         else:
             return jsonify({
                 "message": "Could not access Google Sheets. Please check credentials and permissions."
             }), 500
-    
     except Exception as e:
         return jsonify({
             "message": "Failed to generate leads", 
@@ -136,5 +122,5 @@ def handle_preflight():
         response.headers.add('Access-Control-Allow-Methods', "GET,POST,OPTIONS")
         return response
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
