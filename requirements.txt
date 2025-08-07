@@ -1,5 +1,6 @@
-flask
+Flask
 flask-cors
+gunicorn
 pandas
 google-auth
 google-auth-oauthlib
