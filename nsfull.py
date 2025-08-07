@@ -8,7 +8,13 @@ from google.auth.transport.requests import Request
 import re
 
 app = Flask(__name__)
-CORS(app, origins=["https://nexfull-frontend-ery2.vercel.app"])  # ✅ Allow only your frontend domain
+
+# ✅ Allow all relevant frontend domains
+CORS(app, origins=[
+    "http://localhost:5173",  # Local dev
+    "https://nexfull-frontend-ery2.vercel.app",  # Main domain
+    "https://nexfull-frontend-ery2-1g22qmpfp-jehu-zachary-sedillos-projects.vercel.app"  # Vercel preview
+])
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 SPREADSHEET_ID = '1IPoBslhi_eYLm-myOlOxUQGHXCHpxxJ66WZAK-BlxPI'
