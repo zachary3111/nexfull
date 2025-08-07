@@ -1,10 +1,8 @@
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 import pandas as pd
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from google.auth.transport.requests import Request
 import os
 import csv
 from io import StringIO
@@ -30,34 +28,15 @@ SHEET_NAME = "Real-Time Leads (Dup Checker)"
 
 def get_google_sheets_data():
     try:
-        creds = None
-        if os.path.exists('token.json'):
-            creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-                with open('token.json', 'w') as token:
-                    token.write(creds.to_json())
-            else:
-                if not os.path.exists('credentials.json'):
-                    raise Exception("Missing credentials.json on server.")
-                flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-                creds = flow.run_console()
-                with open('token.json', 'w') as token:
-                    token.write(creds.to_json())
-
+        creds = service_account.Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
         service = build('sheets', 'v4', credentials=creds)
         result = service.spreadsheets().values().get(
             spreadsheetId=SPREADSHEET_ID,
             range=SHEET_NAME
         ).execute()
-
-        values = result.get('values', [])
-        return values
-
+        return result.get('values', [])
     except Exception as e:
-        print(f"Error getting Google Sheets data: {str(e)}")
+        print(f"Google Sheets access error: {str(e)}")
         return None
 
 @app.route("/most_recent_leads_with_hyperlinks.csv", methods=["GET"])
@@ -65,22 +44,17 @@ def get_csv():
     try:
         sheets_data = get_google_sheets_data()
         if not sheets_data:
-            sheets_data = [
-                ["Name", "Email", "Company", "Phone", "Status"],
-                ["John Doe", "john@example.com", "Example Corp", "123-456-7890", "New"],
-                ["Jane Smith", "jane@company.com", "Company Inc", "987-654-3210", "Contacted"]
-            ]
+            sheets_data = [["Name", "Email", "Company", "Phone", "Status"],
+                           ["John Doe", "john@example.com", "Example Corp", "123-456-7890", "New"],
+                           ["Jane Smith", "jane@company.com", "Company Inc", "987-654-3210", "Contacted"]]
 
         output = StringIO()
         writer = csv.writer(output)
         for row in sheets_data:
             writer.writerow(row)
 
-        csv_content = output.getvalue()
-        output.close()
-
         return Response(
-            csv_content,
+            output.getvalue(),
             mimetype="text/csv",
             headers={
                 "Content-Disposition": "attachment; filename=most_recent_leads_with_hyperlinks.csv",
@@ -90,13 +64,13 @@ def get_csv():
     except Exception as e:
         return jsonify({"error": f"Failed to generate CSV: {str(e)}"}), 500
 
-@app.route("/generate-leads", methods=["GET", "POST"])
+@app.route("/generate-leads", methods=["GET"])
 def generate_leads():
     try:
         sheets_data = get_google_sheets_data()
         if sheets_data:
             return jsonify({
-                "message": "Leads generated successfully", 
+                "message": "Leads generated successfully",
                 "count": len(sheets_data) - 1 if len(sheets_data) > 1 else 0
             }), 200
         else:
@@ -104,10 +78,7 @@ def generate_leads():
                 "message": "Could not access Google Sheets. Please check credentials and permissions."
             }), 500
     except Exception as e:
-        return jsonify({
-            "message": "Failed to generate leads", 
-            "error": str(e)
-        }), 500
+        return jsonify({"message": "Failed to generate leads", "error": str(e)}), 500
 
 @app.route("/", methods=["GET"])
 def root():
@@ -121,6 +92,3 @@ def handle_preflight():
         response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,Accept,Origin,X-Requested-With")
         response.headers.add('Access-Control-Allow-Methods', "GET,POST,OPTIONS")
         return response
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000, debug=True)
