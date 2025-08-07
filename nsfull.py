@@ -13,7 +13,9 @@ app = Flask(__name__)
 CORS(app, origins=[
     "http://localhost:5173",  # Local dev
     "https://nexfull-frontend-ery2.vercel.app",  # Main domain
-    "https://nexfull-frontend-ery2-1g22qmpfp-jehu-zachary-sedillos-projects.vercel.app"  # Vercel preview
+    "https://nexfull-frontend-ery2-1g22qmpfp-jehu-zachary-sedillos-projects.vercel.app",
+    "https://nexfull-frontend-h4iu.vercel.app"
+    # Vercel preview
 ])
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
